@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WILWATIKTA 3D — Open-World Crime in a Sunset City</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#0a0818;font-family:Verdana,Geneva,sans-serif;color:#fff}
+#game-canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+.panel{background:rgba(12,10,24,.74);border:1px solid rgba(255,216,79,.35);border-radius:10px;padding:8px 12px}
+/* ---------- HUD ---------- */
+#hud{position:fixed;inset:0;pointer-events:none;display:none;z-index:5}
+#mission-panel{position:absolute;left:14px;top:14px;width:302px}
+#m-name{color:#ffd84f;font-weight:700;font-size:13px;letter-spacing:.5px}
+#m-obj{font-size:12px;margin:3px 0}
+#m-row{display:flex;gap:14px;font-size:11px;color:#ffd84f;font-weight:700}
+#m-track{height:5px;background:#3a3a4a;border-radius:3px;margin:5px 0 3px}
+#m-bar{height:100%;background:#ffd84f;border-radius:3px}
+#m-next{font-size:10px;color:#b8b8c8;letter-spacing:1px}
+#district-banner{position:absolute;top:16px;left:0;right:0;text-align:center;font-size:22px;font-weight:700;letter-spacing:9px;text-shadow:0 2px 8px #000,0 0 2px #000}
+#mission-title{position:absolute;top:96px;left:0;right:0;text-align:center;font-size:25px;font-weight:700;letter-spacing:5px;color:#ffd84f;text-shadow:0 2px 10px #000,0 0 3px #000}
+#cash-panel{position:absolute;right:14px;top:14px;width:212px;text-align:right}
+#cash{font-size:33px;font-weight:700;color:#7de87d;line-height:1}
+#stars{color:#ffd84f;font-size:17px;letter-spacing:3px;margin:2px 0}
+#clock{font-size:11px;color:#d8d8e0}
+#radio-panel{position:absolute;right:14px;top:126px;width:212px}
+#radio-name{color:#ff8ad8;font-weight:700;font-size:13px;letter-spacing:.5px}
+#radio-track{font-size:12px}
+.eq{display:flex;gap:3px;align-items:flex-end;height:14px;margin-top:4px}
+.eq i{display:block;width:6px;background:#ff8ad8;animation:eq .7s infinite alternate}
+.eq i:nth-child(1){height:8px}.eq i:nth-child(2){height:13px;animation-delay:.15s}.eq i:nth-child(3){height:6px;animation-delay:.3s}.eq i:nth-child(4){height:11px;animation-delay:.45s}
+@keyframes eq{from{transform:scaleY(.4)}to{transform:scaleY(1)}}
+/* WPD response list — BLUE heading and unit labels (v8 change 1) */
+#wpd-panel{position:absolute;right:14px;top:206px;width:232px;display:none}
+.wpd-head{color:#5ea8ff;font-weight:700;font-size:12px;letter-spacing:3px;margin-bottom:5px}
+.wpd-row{display:flex;justify-content:space-between;font-size:11px;padding:2px 0}
+.wpd-unit{color:#6fb4ff;font-weight:700}
+.wpd-dist{color:#b8b8c8}
+.wpd-status{font-weight:700}
+.st-PURSUIT{color:#ffd84f}.st-RAMMING{color:#ff5a6a}.st-ROADBLOCK{color:#ff9a3f}.st-SPOTLIGHT{color:#fff}.st-STANDBY{color:#b8b8c8}
+/* Crew cards on the LEFT (v8 change 2) */
+#crew-panel{position:absolute;left:14px;top:196px;width:216px;display:flex;flex-direction:column;gap:8px}
+.crew-card{display:flex;align-items:center;gap:9px;background:rgba(12,10,24,.74);border:1px solid rgba(255,216,79,.3);border-radius:10px;padding:7px 10px}
+.crew-badge{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;flex:none}
+.crew-info{display:flex;flex-direction:column;line-height:1.25}
+.crew-info b{font-size:13px;letter-spacing:.5px}
+.crew-info i{font-style:normal;font-size:10px;color:#b8b8c8}
+.crew-info em{font-style:normal;font-size:11px;color:#ffd84f;font-weight:700}
+.crew-cd{margin-left:auto;color:#ff8a8a;font-weight:700;font-size:12px}
+.crew-card.cooling{opacity:.55}.crew-card.poor .crew-info em{color:#ff8a8a}
+/* Weapon bar, raised higher (v8 change 3) */
+#weapon-bar{position:absolute;right:14px;bottom:152px;display:flex;gap:6px}
+.wslot{position:relative;width:62px;height:62px;background:rgba(12,10,24,.8);border:2px solid rgba(255,255,255,.25);border-radius:8px;text-align:center;padding-top:16px}
+.wslot.sel{border-color:#ffd84f;box-shadow:0 0 10px rgba(255,216,79,.6)}
+.wslot.locked{opacity:.6}
+.wnum{position:absolute;top:2px;left:5px;font-size:10px;color:#b8b8c8}
+.wicon{display:block;height:24px}
+.wicon svg{width:30px;height:22px}
+.wammo{display:block;font-size:11px;font-weight:700;margin-top:1px}
+.wname{display:block;font-size:8px;color:#ffd84f;letter-spacing:1px}
+#weapon-info{position:absolute;right:352px;bottom:172px;text-align:right}
+#weapon-name{color:#ffd84f;font-weight:700;font-size:13px}
+#weapon-ammo{font-size:11px;color:#e8e8f0}
+#speedo{position:absolute;right:14px;bottom:14px;text-align:right}
+#speed-num{font-size:62px;font-weight:700;line-height:.95;text-shadow:0 2px 8px #000}
+#speed-row{font-size:13px;color:#e8e8f0}
+#speed-gear{display:inline-block;background:#ffd84f;color:#111;font-weight:700;border-radius:4px;padding:1px 7px;margin-left:6px}
+#car-name{color:#ffd84f;font-weight:700;font-size:13px;letter-spacing:2px}
+#condition-track{width:180px;height:6px;background:#3a3a4a;border-radius:3px;margin:5px 0 0 auto}
+#condition-bar{height:100%;border-radius:3px}
+#minimap-wrap{position:absolute;left:14px;bottom:14px;width:176px}
+#minimap-canvas{width:168px;height:168px;display:block}
+#mini-district{color:#ffd84f;font-weight:700;font-size:12px;margin-top:4px}
+#mini-street{font-size:11px;color:#d8d8e0}
+.vbar{height:6px;background:#3a3a4a;border-radius:3px;margin-top:4px;overflow:hidden}
+.vbar i{display:block;height:100%}
+#hp-bar{background:#3fd84a}#armor-bar{background:#4a9aff}#rep-bar{background:#b07fe8;width:65%}
+#rep-label{font-size:10px;color:#b8b8c8;letter-spacing:1px;margin-top:3px}
+#dialogue{position:absolute;left:50%;transform:translateX(-50%);bottom:26px;width:436px;display:none;align-items:center;gap:10px;background:rgba(12,10,24,.8);border:1px solid rgba(255,216,79,.35);border-radius:10px;padding:8px 12px}
+#dlg-portrait{width:52px;height:52px;border-radius:8px;flex:none}
+#dlg-name{color:#ffd84f;font-weight:700;font-size:12px}
+#dlg-role{color:#b8b8c8;font-size:10px;margin-left:6px}
+#dlg-text{font-size:13px;line-height:1.35}
+#dispatch{position:absolute;left:0;right:0;bottom:118px;text-align:center;color:#6fb4ff;font-weight:700;font-size:12px;text-shadow:0 1px 4px #000;display:none}
+#popups{position:absolute;left:0;right:0;top:46%;text-align:center}
+.popup b{display:block;color:#ffd84f;font-size:20px;text-shadow:0 2px 8px #000}
+.popup i{font-style:normal;color:#fff;font-size:12px;text-shadow:0 1px 4px #000}
+#controls-footer{position:absolute;left:0;right:0;bottom:3px;text-align:center;font-size:10px;color:rgba(255,255,255,.65);text-shadow:0 1px 3px #000}
+#vignette{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 120px 40px rgba(200,20,20,.55);opacity:0;z-index:6}
+/* ---------- Overlays ---------- */
+.overlay{position:fixed;inset:0;display:none;z-index:10;align-items:center;justify-content:center;flex-direction:column}
+.menu-btn{display:block;width:280px;margin:6px auto;padding:12px;background:rgba(12,10,24,.82);border:1px solid #ffd84f;border-radius:8px;color:#fff;font-family:inherit;font-size:15px;font-weight:700;letter-spacing:3px;cursor:pointer;pointer-events:auto}
+.menu-btn:hover{background:rgba(60,40,10,.9)}
+.panel-box{background:rgba(10,8,20,.9);border:1px solid rgba(255,216,79,.5);border-radius:14px;padding:26px 34px;text-align:center;max-width:620px}
+.panel-box h2{color:#ffd84f;letter-spacing:4px;margin-bottom:12px}
+.panel-box p{font-size:13px;line-height:1.6;margin-bottom:8px;text-align:left}
+/* ---------- Title screen ---------- */
+#title-screen{justify-content:flex-start;pointer-events:none}
+#title-word{margin-top:3.5vh;font-family:"Arial Black",Arial,sans-serif;font-size:118px;font-weight:900;font-style:italic;letter-spacing:2px;line-height:.95;text-align:center;transform:rotate(-3deg) skewX(-6deg);background:linear-gradient(180deg,#fffbe8 0%,#ffe98a 32%,#ff9a4f 62%,#ff5f8a 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 0 rgba(90,20,60,.65)) drop-shadow(0 8px 22px rgba(0,0,0,.55))}
+#title-tag{margin-top:8px;font-size:19px;font-weight:700;letter-spacing:7px;color:#37e0d8;text-shadow:0 2px 8px #000;transform:rotate(-3deg)}
+#title-menu{position:absolute;right:6%;top:37%;pointer-events:none}
+#title-menu .menu-btn{width:300px;text-align:left;padding-left:22px}
+#title-foot{position:absolute;bottom:46px;left:0;right:0;text-align:center;font-size:12px;color:rgba(255,255,255,.85);text-shadow:0 1px 4px #000}
+#title-hint{position:absolute;bottom:18px;left:0;right:0;text-align:center;font-size:15px;font-weight:700;text-shadow:0 2px 6px #000}
+body.shot #title-menu,body.shot #title-foot{display:none!important}
+body.shot .eq i{animation:none!important}
+/* ---------- Map screen ---------- */
+#map-screen{background:rgba(5,5,12,.88);flex-direction:row;gap:26px;justify-content:center}
+#map-left h2{color:#ffd84f;letter-spacing:5px;font-size:19px;margin-bottom:8px}
+#map-canvas{border:2px solid #ffd84f;border-radius:6px;background:#0d1322}
+#map-right{width:330px}
+#map-ring-wrap{display:flex;align-items:center;gap:16px;margin-bottom:10px}
+#map-ring{width:86px;height:86px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none}
+#map-ring b{background:#0d1322;width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px}
+#map-stats{font-size:12px;line-height:1.9;color:#d8d8e0}
+#map-stats b{color:#fff}
+#map-missions{margin-top:10px;border-top:1px solid #3a3a4a;padding-top:8px}
+.map-mission{display:flex;justify-content:space-between;font-size:12px;padding:2.5px 0;color:#d8d8e0}
+.map-mission b{font-size:11px}
+.map-mission b.done{color:#3fd84a}.map-mission b.active{color:#ffd84f}
+#map-legend{font-size:11px;color:#b8b8c8;margin-top:10px;line-height:1.7}
+</style>
+</head>
+<body class="mode-title">
+<canvas id="game-canvas"></canvas>
+<div id="vignette"></div>
+<div id="hud">
+  <div id="mission-panel" class="panel">
+    <div id="m-name">MISSION 9/12 — Heat Wave</div>
+    <div id="m-obj">Outrun the helicopter — reach the docks!</div>
+    <div id="m-row"><span id="m-time">◷ 2:29</span><span id="m-dist">▲ 101m</span></div>
+    <div id="m-track"><div id="m-bar" style="width:60%"></div></div>
+    <div id="m-next">NEXT: KENCANA HILANG</div>
+  </div>
+  <div id="district-banner">KAMPUNG BATIK</div>
+  <div id="mission-title">MISSION 9/12 — HEAT WAVE</div>
+  <div id="cash-panel" class="panel">
+    <div id="cash">$12,480</div>
+    <div id="stars">★★★★☆</div>
+    <div id="clock">18:36 · DAY 1</div>
+  </div>
+  <div id="radio-panel" class="panel">
+    <div id="radio-name">GAMELAN FM 101.1</div>
+    <div id="radio-track">Bonang Malam</div>
+    <div class="eq"><i></i><i></i><i></i><i></i></div>
+  </div>
+  <div id="wpd-panel" class="panel">
+    <div class="wpd-head">WPD RESPONSE</div>
+    <div id="wpd-rows"></div>
+  </div>
+  <div id="crew-panel"></div>
+  <div id="weapon-info"><div id="weapon-name">SMG KANCIL</div><div id="weapon-ammo">30 / 90 ROUNDS</div></div>
+  <div id="weapon-bar"></div>
+  <div id="speedo">
+    <div id="speed-num">67</div>
+    <div id="speed-row">KM/H<span id="speed-gear">3</span></div>
+    <div id="car-name">GARUDA GT</div>
+    <div id="condition-track"><div id="condition-bar" style="width:92%"></div></div>
+  </div>
+  <div id="minimap-wrap">
+    <canvas id="minimap-canvas" width="168" height="168"></canvas>
+    <div id="mini-district">KAMPUNG BATIK</div>
+    <div id="mini-street">Jl. Pantai Utara</div>
+    <div class="vbar"><i id="hp-bar" style="width:100%"></i></div>
+    <div class="vbar"><i id="armor-bar" style="width:60%"></i></div>
+    <div class="vbar"><i id="rep-bar"></i></div>
+    <div id="rep-label">REP FIXER · 1320</div>
+  </div>
+  <div id="dialogue">
+    <canvas id="dlg-portrait" width="52" height="52"></canvas>
+    <div><span id="dlg-name">AGUS</span><span id="dlg-role">FIXER</span><div id="dlg-text"></div></div>
+  </div>
+  <div id="dispatch"></div>
+  <div id="popups"></div>
+  <div id="controls-footer">WASD drive/walk · E enter/exit · J shoot · R reload · 1-5 weapons · Z/X/C crew · G garage · M map · P pause · T radio</div>
+</div>
+
+<div id="title-screen" class="overlay" style="display:flex">
+  <div id="title-word">WILWATIKTA</div>
+  <div id="title-tag">A CRIME STORY IN WILWATIKTA BAY · 1998</div>
+  <div id="title-menu">
+    <button class="menu-btn" id="btn-new">NEW GAME</button>
+    <button class="menu-btn" id="btn-continue">CONTINUE</button>
+    <button class="menu-btn" id="btn-howto">HOW TO PLAY</button>
+    <button class="menu-btn" id="btn-load">LOAD GAME</button>
+  </div>
+  <div id="title-foot">Sugeng Wibowo — getaway driver. 12 missions. 6 districts. One city that never forgets.</div>
+  <div id="title-hint">Click to start · Mouse aims · WASD moves</div>
+</div>
+
+<div id="map-screen" class="overlay">
+  <div id="map-left"><h2>WILWATIKTA — CITY MAP</h2><canvas id="map-canvas" width="560" height="560"></canvas></div>
+  <div id="map-right">
+    <div id="map-ring-wrap"><div id="map-ring"><b id="map-pct">92%</b></div><div style="font-size:12px;color:#d8d8e0">STORY<br><b style="color:#fff">COMPLETE</b></div></div>
+    <div id="map-stats"></div>
+    <div id="map-missions"></div>
+    <div id="map-legend">● Pelabuhan Segara &nbsp;● Alun-Alun &nbsp;● Pantai Kidul<br>● Pasar Senja &nbsp;● Kampung Batik &nbsp;● Lorong Emas<br>◆ POI &nbsp;★ Objective &nbsp;○ Search zone &nbsp;▲ You &nbsp;┄ Route</div>
+    <button class="menu-btn" id="btn-map-close" style="margin-top:14px">CLOSE MAP [M]</button>
+  </div>
+</div>
+
+<div id="pause-screen" class="overlay">
+  <div class="panel-box">
+    <h2>PAUSED</h2>
+    <button class="menu-btn" id="btn-resume">RESUME</button>
+    <button class="menu-btn" id="btn-save">SAVE GAME</button>
+    <button class="menu-btn" id="btn-pause-howto">HOW TO PLAY</button>
+    <button class="menu-btn" id="btn-quit">QUIT TO TITLE</button>
+  </div>
+</div>
+
+<div id="garage-screen" class="overlay">
+  <div class="panel-box">
+    <h2>BENGKEL BAMBANG</h2>
+    <p id="garage-info"></p>
+    <button class="menu-btn" id="btn-engine">ENGINE UPGRADE — $500</button>
+    <button class="menu-btn" id="btn-armor">ARMOR UPGRADE — $400</button>
+    <button class="menu-btn" id="btn-paint">REPAINT — $250</button>
+    <button class="menu-btn" id="btn-garage-close">LEAVE GARAGE</button>
+  </div>
+</div>
+
+<div id="howto-screen" class="overlay">
+  <div class="panel-box">
+    <h2>HOW TO PLAY</h2>
+    <p><b>WASD / arrows</b> — drive or walk. <b>E</b> — enter / exit car. <b>J</b> or click — shoot. <b>R</b> — reload. <b>1–5</b> — weapons. <b>Z / X / C</b> — hire Agus, Bambang, Ratna. <b>G</b> — garage (near Bengkel Bambang). <b>M</b> — city map. <b>P</b> — pause. <b>T</b> — switch radio station.</p>
+    <p>Follow the gold beacon to each mission target. Crimes raise your wanted stars — the WPD sends cars, roadblocks, and a helicopter. Break line of sight to cool down. Drift at speed to build stunt combos. Your progress saves to slots from the pause menu.</p>
+    <button class="menu-btn" id="btn-howto-back">BACK</button>
+  </div>
+</div>
+
+<div id="save-screen" class="overlay">
+  <div class="panel-box">
+    <h2 id="save-title">LOAD GAME</h2>
+    <div id="save-slots"></div>
+    <button class="menu-btn" id="btn-save-back">BACK</button>
+  </div>
+</div>
+
+<div id="busted-screen" class="overlay">
+  <div class="panel-box">
+    <h2>BUSTED</h2>
+    <p>Komisaris Wanto finally caught up with you. Agus paid your bail — $500. The city keeps moving.</p>
+    <button class="menu-btn" id="btn-busted">BACK TO THE STREETS</button>
+  </div>
+</div>
+
+<div id="wasted-screen" class="overlay">
+  <div class="panel-box">
+    <h2>WASTED</h2>
+    <p>Sugeng went down in a hail of gunfire. But legends in Wilwatikta get back up.</p>
+    <button class="menu-btn" id="btn-wasted">GET UP</button>
+  </div>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
